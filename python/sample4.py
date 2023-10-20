@@ -13,7 +13,7 @@ def main():
     x = solver.IntVar(0, num_vals - 1, "x")
     y = solver.IntVar(0, num_vals - 1, "y")
     z = solver.IntVar(0, num_vals - 1, "z")
-
+ 
     # Constraint 0: x != y.
     solver.Add(x != y)
     print("Number of constraints: ", solver.Constraints())
