@@ -1,44 +1,47 @@
 from ortools.sat.python import cp_model
 
-def create_programYears_variables(model):
-    programs = ["BSCS", "BSIT"]
-    years = ["1st", "2nd", "3rd", "4th"]
+class Scheduler:
+    def __init__(self):
+        self.model = cp_model.CpModel()
+        self.solver = cp_model.CpSolver()
 
-    programYears = {} # empty dictionary to store the subject variables
+        self.student_vars = {}  # Dictionary to store student variables
 
-    for program in programs:
-        for year in years:
-            variable_name = f"{program}_{year}"
-            programYears[variable_name] = model.NewBoolVar(variable_name) 
-        
-    return programYears
+        # Replace the data below with your actual program block data
+        program_block_data = [
+            {
+                "program": "ProgramA",
+                "block": "Block1",
+                "courses": [
+                    {"code": "Course1", "description": "Description1", "unit": "Unit1"},
+                    {"code": "Course2", "description": "Description2", "unit": "Unit2"},
+                ],
+            },
+            # Add more program blocks here
+        ]
 
-def create_subjects_variables(model):
-    subjects = {
-        "BSCS": {
-            "1st": ["Subject1", "Subject2", "Subject3", "Subject4", "Subject5"],
-            "2nd": ["Subject6", "Subject7", "Subject8", "Subject9", "Subject10"],
-            "3rd": ["Subject11", "Subject12", "Subject13", "Subject14", "Subject15"],
-            "4th": ["Subject16", "Subject17", "Subject18", "Subject19", "Subject20"]
-        },
-        "BSIT": {
-            "1st": ["SubjectA", "SubjectB", "SubjectC", "SubjectD", "SubjectE"],
-            "2nd": ["SubjectF", "SubjectG", "SubjectH", "SubjectI", "SubjectJ"],
-            "3rd": ["SubjectK", "SubjectL", "SubjectM", "SubjectN", "SubjectO"],
-            "4th": ["SubjectP", "SubjectQ", "SubjectR", "SubjectS", "SubjectT"]
-        }
-    }
+        # Define and initialize variables, domains, and constraints here.
+        self.define_variables(program_block_data)
+        self.define_domains()
+        self.define_constraints()
 
+    def define_variables(self, program_block_data):
+        # Define student variables based on program, block, and course
+        for data in program_block_data:
+            program = data["program"]
+            block = data["block"]
+            courses = data["courses"]
+            for course in courses:
+                course_code = course["code"]
+                # Create a binary variable for each student
+                student_var = self.model.NewBoolVar(f"Student_{program}_{block}_{course_code}")
+                self.student_vars[(program, block, course_code)] = student_var
 
-def solve_variables():
-    model = cp_model.CpModel()
-    programYears = create_programYears_variables(model)
-    solver = cp_model.CpSolver()
-
-    solver.Solve(model)
-    return programYears
+    # Define other methods for domains and constraints as previously shown
 
 if __name__ == "__main__":
-    programYears = solve_variables()
-    output = list(programYears.keys())
-    print(f"{output}")
+    Scheduler = Scheduler()
+    Scheduler.define_variables()
+    Scheduler.define_domains()
+    Scheduler.define_constraints()
+    Scheduler.solve()

@@ -1,22 +1,25 @@
 from ortools.sat.python import cp_model
 
+# Function to create subject variables based on programs, years, and subjects per program
 def create_subject_variables(model, programs, years, subjects_per_program):
     subject_vars = {}
 
     for program in programs:
         for year in years:
             for subject in subjects_per_program[program][year]:
-                variable_name = f"{program}_{year}_{subject}"
-                var = model.NewBoolVar(variable_name)
-                subject_vars[variable_name] = var
+                for block in blocks:
+                    variable_name = f"{program}_{year}_{subject}_{block}"
+                    var = model.NewBoolVar(variable_name)
+                    subject_vars[variable_name] = var
 
     return subject_vars
 
-def solve_subject_variables(programs, years, subjects_per_program):
+# Function to solve 
+def solve_variables(programs, years, subjects_per_program):
     model = cp_model.CpModel()
     subject_vars = create_subject_variables(model, programs, years, subjects_per_program)
     solver = cp_model.CpSolver()
-
+    
     solver.Solve(model)
 
     return subject_vars
@@ -24,8 +27,7 @@ def solve_subject_variables(programs, years, subjects_per_program):
 if __name__ == "__main__":
     programs = ["BSCS", "BSIT"]
     years = ["1st", "2nd", "3rd", "4th"]
-    
-    # Define subjects per program
+    blocks = ["a", "b", "c", "d", "e"]
     subjects_per_program = {
         "BSCS": {
             "1st": ["Subject1", "Subject2", "Subject3", "Subject4", "Subject5"],
@@ -41,6 +43,6 @@ if __name__ == "__main__":
         }
     }
 
-    subject_vars = solve_subject_variables(programs, years, subjects_per_program)
+    subject_vars = solve_variables(programs, years, subjects_per_program)
     for variable_name in subject_vars.keys():
         print(f"{variable_name}")
