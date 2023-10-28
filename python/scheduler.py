@@ -1,28 +1,27 @@
-
+from ortools.sat.python import cp_model
 
 class Scheduler:
-    def __init__(self, programs, years, blocks, subjects_per_program):
-        self.programs = programs
-        self.years = years
+    def __init__(self,blocks, program_blocks, teacher):
         self.blocks = blocks
-        self.subjects_per_program = subjects_per_program
+        self.program_blocks = program_blocks
+        self.teacher = teacher
 
-    def create_program_block_variables(self):
-        for program in self.programs:
-            for year in self.years:
-                num_blocks = self.blocks.get(program, {}).get(year, 1)
-                year_block_names = [chr(ord('a') + i) for i in range(num_blocks)]
-                for block in year_block_names:
+
+    def create_variables(self):
+        for program, program_data in self.program_blocks.items():
+            for year, subjects in program_data.items():
+                block_count = self.blocks[program][year]
+                block_names = [chr(ord('a') + i) for i in range(block_count)]
+
+                for block in block_names:
                     variable_name = f"{program} {year}{block}"
-                    
-                    print(variable_name)  # Log variable name
-                    for subject in self.subjects_per_program.get(program, {}).get(year, []):
-                        print(subject)
+                    print(variable_name)
+
+                    for subject in subjects:
+                        print(f"Subject: {subject['name']}")
 
 if __name__ == "__main__":
-    programs = ["BSCS", "BSIT"]
-    years = ["1", "2", "3", "4"]
-    subjects_per_program = {
+    program_blocks = {
         "BSCS": {
             "1": [
                 {"name": "Subject1", "code": "CS 2107", "description": "Data Structures and Algorithm", "unit": 3},
@@ -80,10 +79,24 @@ if __name__ == "__main__":
             "1": 1,
             "2": 1,
             "3": 1,
-            "4": 1
+            "4": 4
         }
     }
+    teacher = {
+        "teacher1": [
+            {"name": "SubjectG", "code": "IT 4102", "description": "Mobile App Development", "unit": 3},
+            {"name": "SubjectA", "code": "IT 1101", "description": "Information Technology Fundamentals", "unit": 3},
+            {"name": "Subject8", "code": "CS 5204", "description": "Data Mining", "unit": 3},
+                # Add more subjects here
+        ],
+        "teacher2": [
+            {"name": "Subject1", "code": "CS 2107", "description": "Data Structures and Algorithm", "unit": 3},
+            {"name": "SubjectC", "code": "IT 2105", "description": "System Analysis and Design", "unit": 3},
+            {"name": "SubjectD", "code": "IT 2207", "description": "Web Development", "unit": 3},
+                # Add more subjects here
+        ]
+    }
 
-    scheduler = Scheduler(programs, years, blocks, subjects_per_program)
+    scheduler = Scheduler(blocks, program_blocks, teacher)
 
-    scheduler.create_program_block_variables()
+    scheduler.create_variables()
