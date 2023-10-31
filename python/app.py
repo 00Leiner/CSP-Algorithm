@@ -1,17 +1,38 @@
-from constraint import *
+from ortools.sat.python import cp_model
 
-problem = Problem()
+class AllSolutionsCollector(cp_model.CpSolverSolutionCallback):
+    def __init__(self, variables):
+        cp_model.CpSolverSolutionCallback.__init__(self)
+        self.variables = variables
+        self.solutions = []
+        
+    def on_solution_callback(self):
+        solution = [self.Value(var) for var in self.variables]
+        self.solutions.append(solution)
 
-# Define variables and domains
-students = ['Y_s1', 'Y_s2', 'Y_s3', 'Y_s4', 'Y_s5']
-for student in students:
-    problem.addVariable(student, [0, 1])
+def main():
+    # Create a new CP-SAT model
+    model = cp_model.CpModel()
 
-# Define constraints
-def student_constraint(*args):
-    return sum(args) <= 5
+    # Define the domains of the variables
+    A = model.NewIntVar(0, 5, 'A')
+    B = model.NewIntVar(0, 5, 'B')
+    C = model.NewIntVar(0, 5, 'C')
 
-problem.addConstraint(student_constraint, students)
+    # Define a constraint: A + B == C
+    model.Add(A + B == C)
 
-solutions = problem.getSolutions()
-print(solutions)
+    # Create a solver
+    solver = cp_model.CpSolver()
+
+    # Create a solution collector
+    variables = [A, B, C]
+    collector = AllSolutionsCollector(variables)
+    solver.SearchForAllSolutions(model, collector)
+
+    print("All solutions:")
+    for solution in collector.solutions:
+        print(f'A = {solution[0]}, B = {solution[1]}, C = {solution[2]}')
+
+if __name__ == '__main__':
+    main()
