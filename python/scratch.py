@@ -2,31 +2,19 @@ from ortools.sat.python import cp_model
 
 class Scheduler:
     def __init__(self, rooms, teachers, program_blocks):
+        
         self.rooms = rooms
         self.teachers = teachers
         self.program_blocks = program_blocks
+
         self.model = cp_model.CpModel()
         self.solver = cp_model.CpSolver()
 
-        # Define variables for teachers, students, rooms, and time slots.
+        # Define variables and domain for teachers, students, rooms, and time slots.
         self.available_teachers = self.define_teacher_variables()
         self.available_courses = self.define_student_variables()
         self.available_rooms = self.define_room_variables()
-
-        # Define and initialize variables, domains, and constraints in the constructor.
-    def define_variables(self):
-        # Define variables for teachers, students, rooms, and time slots.
-        self.define_teacher_variables()  
-        self.define_student_variables()  
-        self.define_room_variables()
-
-    def define_domains(self):
-        # Define domains for the variables.
-        self.define_teacher_domains()
-        self.define_student_domains()
-        self.define_room_domains()
-
-    def define_constraints(self):
+        
         # Define constraints based on your scheduling rules.
         self.define_teacher_constraints()
         self.define_student_constraints()
@@ -47,7 +35,6 @@ class Scheduler:
 
                 var_name = f"{teacher_name}_{t_code}"
                 available_teachers[(teacher_name, t_code)] = self.model.NewBoolVar(var_name)
-                print()
         
         #for key, value in available_teachers.items():
         #    print(f"Key: {key}, Value: {value}")
@@ -101,47 +88,26 @@ class Scheduler:
 
         return available_rooms
 
-    def define_teacher_domains(self):
-        # Define domains for teacher variables.
-        available_teachers = self.available_teachers  # Use class attribute
-        available_courses = self.available_courses  # Use class attribute
-
-        for teacher in teachers:
-            teacher_name = teacher['name']
-            teacher_preferredCourses = teacher['preferredCourses']
-            for teacher_courses in teacher_preferredCourses:
-                t_code = teacher_courses['code']
-
-                for course in available_courses:
-                    c_code = course[2]
-                    if t_code == c_code:
-                        # Add a constraint that enforces t_code = c_code for the corresponding variables.
-                        self.model.Add(available_teachers[(teacher_name, t_code)] == available_courses[course])
-
-                        # Print the constraint being added
-                        print(f"Added constraint: {available_teachers}")
-
-                        # You can also print other relevant information
-                        print(f"Teacher: {teacher_name}, Course: {c_code}")
-
-    def define_student_domains(self):
-        # Define domains for student variables.
-        pass
-
-    def define_room_domains(self):
-        # Define domains for room variables.
-        pass
-
     def define_teacher_constraints(self):
-        # Define constraints for teachers.
-        pass
+        available_teachers = self.available_teachers
+        available_courses = self.available_courses
+
+        for teacher in available_teachers:
+            teacher_name = teacher[0]
+            t_code = teacher[1]
+
+            for course in available_courses:
+                program, year_block, c_code = course
+
+                if t_code == c_code:
+                    self.model.Add(available_teachers[(teacher_name, c_code)] == available_courses[course])
+                    print(f"Teacher: {teacher_name}, Course: {c_code}, Program: {program} {year_block}")
 
     def define_student_constraints(self):
-        # Define constraints for students.
+
         pass
 
     def define_room_constraints(self):
-        # Define constraints for room assignments based on room availability.
         pass
 
     def solve(self):
@@ -159,6 +125,7 @@ class Scheduler:
         pass
 
 if __name__ == "__main__":
+
     rooms = [
         {
             'name': "room1",
@@ -390,9 +357,5 @@ if __name__ == "__main__":
     ]
 
     scheduler = Scheduler(rooms, teachers, program_blocks)
-    # scheduler.define_variables()
-    # scheduler.define_domains()
-    # scheduler.define_constraints()
     # scheduler.solve()
     
-    scheduler.define_teacher_domains()
