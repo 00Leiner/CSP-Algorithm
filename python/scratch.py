@@ -14,9 +14,9 @@ class Scheduler:
         self.available_teachers = self.define_teacher_variables()
         self.available_courses = self.define_student_variables()
         self.available_rooms = self.define_room_variables()
-        
+
         # Define constraints based on your scheduling rules.
-        self.define_teacher_constraints()
+        self.define_teacher_preferred_courses_constraints()
         self.define_student_constraints()
         self.define_room_constraints()
 
@@ -88,7 +88,7 @@ class Scheduler:
 
         return available_rooms
 
-    def define_teacher_constraints(self):
+    def define_teacher_preferred_courses_constraints(self):
         available_teachers = self.available_teachers
         available_courses = self.available_courses
 
@@ -101,14 +101,17 @@ class Scheduler:
 
                 if t_code == c_code:
                     self.model.Add(available_teachers[(teacher_name, c_code)] == available_courses[course])
-                    print(f"Teacher: {teacher_name}, Course: {c_code}, Program: {program} {year_block}")
-
+                    #print(f"Teacher: {teacher_name}, Course: {c_code}, Program: {program} {year_block}")
+                    
     def define_student_constraints(self):
-
         pass
 
     def define_room_constraints(self):
-        pass
+        available_rooms = self.available_rooms
+
+        for room in available_rooms:
+            room_name, day, time = room
+            
 
     def solve(self):
         # Solve the CSP problem.
@@ -358,4 +361,3 @@ if __name__ == "__main__":
 
     scheduler = Scheduler(rooms, teachers, program_blocks)
     # scheduler.solve()
-    
