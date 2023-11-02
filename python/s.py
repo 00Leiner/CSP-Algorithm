@@ -1,4 +1,5 @@
 from ortools.sat.python import cp_model
+from itertools import combinations
 
 class Scheduler:
     def __init__(self, rooms, teachers, program_blocks):
@@ -9,8 +10,7 @@ class Scheduler:
 
         self.model = cp_model.CpModel()
         self.solver = cp_model.CpSolver()
-        
-        self.define_course_assignments()
+
     def define_room_variables(self):
         # Define room assignment variables.
         available_rooms = {}
@@ -20,46 +20,42 @@ class Scheduler:
             room_availability = room['availability']
             
             for availability in room_availability:
-                day = availability['day']
+                days = availability['day']
                 time_slots = availability['time']
                 
                 for time in time_slots:
-                    var_name = f"{room_name}_{day}_{time}"
-                    available_rooms[(room_name, day, time)] = self.model.NewBoolVar(var_name)
-        
-        #for key, value in available_rooms.items():
-        #    print(f"Key: {key}, Value: {value}")
+                    var_name = f"{room_name}_{days}_{time}"
+                    available_rooms[(room_name, days, time)] = self.model.NewBoolVar(var_name)
 
         return available_rooms
 
-    def define_course_assignments(self):
-        course_assignments = {}
-        for program_block in self.program_blocks:
-            program = program_block['program']
-            years = program_block['year']
+    def define_days_variable(self):
+        # Define day assignment variables.
+        room_day_filter = {}
 
-            for year in years:
-                year_blocks = year['year']
-                year_blocks += year['blocks']
-                courses = year['courses']
-
-                for course in courses:
-                    course_code = course['code']
-                    course_description = course['description']
-                    course_unit = course['unit']
-                    for room in self.rooms:
-                        room_name = room['name']
-                        for day in room['availability']:
-                            day_name = day['day']
-                            for time_slot in day['time']:
-                                var_name = f"{course_code}, {course_description}, {course_unit}, {day_name}, {time_slot}, {room_name}"
-                                course_assignments[var_name] = self.model.NewBoolVar(var_name)
+        room_variables = self.define_room_variables()
         
-        #for key, value in course_assignments.items():
-        #    print(f"Key: {key}, Value: {value}")
+        unique_days = set()
 
-        return course_assignments
+        for room_tuple in room_variables:
+            days = room_tuple[1]
+            unique_days.add(days)
         
+        unique_days_list = sorted(list(unique_days))
+        
+        for unique_day in unique_days_list:
+            room_day_filter[(unique_day)] = self.model.NewBoolVar(unique_day)
+
+        return room_day_filter
+    
+    def define_days_constraints(self):
+        #define that only 5 days in a week can have a class
+        room_day_filter = self.define_days_variable()
+        for r in range(1, 6):
+            for combo in combinations(room_day_filter.keys(), r):
+                self.model.Add(sum(room_day_filter[day] for day in combo) <= 1)
+            
+
 if __name__ == "__main__":
 
     rooms = [
@@ -72,6 +68,10 @@ if __name__ == "__main__":
                 },
                 {
                     'day': "Tuesday",
+                    'time': [ '07:00', '07:30', '08:00', '08:30' ],
+                },
+                {
+                    'day': "Wednesday",
                     'time': [ '07:00', '07:30', '08:00', '08:30' ],
                 }
                 # Add more availability
@@ -86,6 +86,10 @@ if __name__ == "__main__":
                 },
                 {
                     'day': "Tuesday",
+                    'time': [ '07:00', '07:30', '08:00', '08:30' ],
+                },
+                {
+                    'day': "Wednesday",
                     'time': [ '07:00', '07:30', '08:00', '08:30' ],
                 }
                 # Add more availability
@@ -293,4 +297,3 @@ if __name__ == "__main__":
     ]
 
     scheduler = Scheduler(rooms, teachers, program_blocks)
-    # scheduler.solve()
