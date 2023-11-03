@@ -2,35 +2,15 @@ from ortools.sat.python import cp_model
 
 class Scheduler:
     def __init__(self, rooms, teachers, program_blocks):
-        
         self.rooms = rooms
         self.teachers = teachers
         self.program_blocks = program_blocks
 
         self.model = cp_model.CpModel()
         self.solver = cp_model.CpSolver()
-        
-        self.define_course_assignments()
-    def define_room_variables(self):
-        # Define room assignment variables.
-        available_rooms = {}
-        
-        for room in rooms:
-            room_name = room['name']
-            room_availability = room['availability']
-            
-            for availability in room_availability:
-                day = availability['day']
-                time_slots = availability['time']
-                
-                for time in time_slots:
-                    var_name = f"{room_name}_{day}_{time}"
-                    available_rooms[(room_name, day, time)] = self.model.NewBoolVar(var_name)
-        
-        #for key, value in available_rooms.items():
-        #    print(f"Key: {key}, Value: {value}")
 
-        return available_rooms
+        self.course_assignments = self.define_course_assignments()
+        self.define_constraints()
 
     def define_course_assignments(self):
         course_assignments = {}
@@ -54,13 +34,42 @@ class Scheduler:
                             for time_slot in day['time']:
                                 var_name = f"{course_code}, {course_description}, {course_unit}, {day_name}, {time_slot}, {room_name}"
                                 course_assignments[var_name] = self.model.NewBoolVar(var_name)
-        
-        #for key, value in course_assignments.items():
-        #    print(f"Key: {key}, Value: {value}")
-
         return course_assignments
-        
+
+    def define_constraints(self):
+        for program_block in self.program_blocks:
+            years = program_block['year']
+
+            for year in years:
+                courses = year['courses']
+
+                for course in courses:
+                    course_code = course['code']
+                    teacher = self.get_teacher_for_course(course_code)
+                    # Add constraints related to teacher availability, if needed.
+                    
+        # Add additional constraints as per your requirements, such as room availability, no overlap, etc.
+
+    def get_teacher_for_course(self, course_code):
+        # Implement a method to find and return the teacher for a given course code.
+        # You can use the 'teachers' data to look up the teacher based on their preferred courses.
+        # You may also want to track teacher assignments and ensure that a teacher isn't assigned to conflicting courses.
+        pass
+
+    def solve(self):
+        status = self.solver.Solve(self.model)
+        if status == cp_model.OPTIMAL:
+            self.print_solution()
+        else:
+            print("No feasible solution found.")
+
+    def print_solution(self):
+        for var_name, var in self.course_assignments.items():
+            if self.solver.Value(var):
+                print(f"Assigned: {var_name}")
+
 if __name__ == "__main__":
+    # ... (your data initialization code)
 
     rooms = [
         {
@@ -293,4 +302,4 @@ if __name__ == "__main__":
     ]
 
     scheduler = Scheduler(rooms, teachers, program_blocks)
-    # scheduler.solve()
+    scheduler.solve()
