@@ -27,13 +27,16 @@ class Scheduler:
                     course_code = course['code']
                     course_description = course['description']
                     course_unit = course['unit']
+
                     for room in self.rooms:
                         room_name = room['name']
                         for day in room['availability']:
                             day_name = day['day']
+
                             for time_slot in day['time']:
                                 var_name = f"{course_code}, {course_description}, {course_unit}, {day_name}, {time_slot}, {room_name}"
                                 course_assignments[var_name] = self.model.NewBoolVar(var_name)
+                                
         return course_assignments
 
     def define_constraints(self):
@@ -69,7 +72,6 @@ class Scheduler:
                 print(f"Assigned: {var_name}")
 
 if __name__ == "__main__":
-    # ... (your data initialization code)
 
     rooms = [
         {
