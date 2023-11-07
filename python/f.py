@@ -1,65 +1,65 @@
-
 from ortools.sat.python import cp_model
 
 class Scheduler:
-    def __init__(self, rooms, program_blocks, teacher):
+    def __init__(self, rooms, program_blocks, teachers):
         self.rooms = rooms
         self.program_blocks = program_blocks
-        self.teachers = teacher
+        self.teachers = teachers
 
         self.model = cp_model.CpModel()
         self.solver = cp_model.CpSolver()
-        
-        self.schedule = {}
 
-    def create_variables(self):
+        # Create variables for rooms and program blocks
+        self.room_variables = self.create_room_variables()
+        self.program_block_variables = self.create_program_block_variables()
+
+
+    def create_room_variables(self):
+        room_variables = {}
+
+        for room in self.rooms:
+            room_name = room['name']
+
+            for day in room['availability']:
+                day_name = day['day']
+
+                for time_slot in day['time']:
+                    time = time_slot
+
+                    room_var = f"{room_name}, {day_name}, {time}"
+                    var = self.model.NewBoolVar(room_var)
+                    room_variables[(room_var)] = var
+
+        return room_variables
+
+    def create_program_block_variables(self):
+        program_block_variables = {}
 
         for program_block in self.program_blocks:
             program = program_block['program']
             years = program_block['year']
-            
+
             for year in years:
-                year_blocks = year['year']
-                year_blocks += year['blocks']
+                year_blocks = year['year'] + year['blocks']
                 courses = year['courses']
 
                 for course in courses:
                     course_code = course['code']
                     course_description = course['description']
                     course_unit = course['unit']
-                    
-                    for rooms in self.rooms:
-                        room_name = rooms['name']
-                        
-                        for day in rooms['availability']:
-                            days = day['day']
-                            
-                            for time_slot in day['time']:
-                                
-                                for teachers in self.teachers:
-                                    teacher_name = teachers['name']
-                                    preferred_courses = teachers['preferredCourses']
 
-                                    for preferred_course in preferred_courses:
-                                        if preferred_course['code'] == course_code:
-                                            
-                                            sched_var = f"{program}, {year_blocks}, {course_code}, {course_description}, {course_unit}, {days}, {time_slot}, {room_name}, {teacher_name}"
-                                            var = self.model.NewBoolVar(sched_var)
-                                            self.model.Add(var == 1)  
-                                            self.schedule[( sched_var )] = var
+        program_block_var = f"{program}, {year_blocks}, {course_code}, {course_description}, {course_unit}"
+        var = self.model.NewBoolVar(program_block_var)
+        program_block_variables[(program_block_var)] = var
 
-    def solve(self):
+        return program_block_variables
 
-        status = self.solver.Solve(self.model)
-
-        if status == cp_model.OPTIMAL:
-            self.interpret_schedule()
-
-    def interpret_schedule(self):
-        for key, var in self.schedule.items():
-            if self.solver.Value(var) == 1:
-                print(f"Scheduled: {key}")
-
+    def assign_rooms_and_program_blocks(self):
+        get = 0
+        for room_var in self.room_variables.items():
+            for program_block_var in self.program_block_variables.items():
+                get = f"{room_var} = {program_block_var}"
+        print(get)
 
 if __name__ == "__main__":
     
@@ -294,5 +294,5 @@ if __name__ == "__main__":
     ]
 
     scheduler = Scheduler(rooms, program_blocks, teachers)
-    scheduler.create_variables()
-    scheduler.solve()
+
+    scheduler.assign_rooms_and_program_blocks()
