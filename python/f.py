@@ -15,22 +15,22 @@ class Scheduler:
 
 
     def create_room_variables(self):
-        room_variables = {}
+        
+                
+        room_availability_vars = {}  # Dictionary to store the boolean variables
 
-        for room in self.rooms:
+        # Create NewBoolVar variables for each room's availability slot and set their values based on the sample data
+        for room in rooms:
             room_name = room['name']
+            availability = room['availability']
+            for day_info in availability:
+                day = day_info['day']
+                time = day_info['time']
+                for t in time:
+                    room_availability_vars[(room_name, day, t)] = self.model.NewBoolVar(f'{room_name}_{day}_{t}')
 
-            for day in room['availability']:
-                day_name = day['day']
+        print(room_availability_vars)
 
-                for time_slot in day['time']:
-                    time = time_slot
-
-                    room_var = f"{room_name}, {day_name}, {time}"
-                    var = self.model.NewBoolVar(room_var)
-                    room_variables[(room_var)] = var
-
-        return room_variables
 
     def create_program_block_variables(self):
         program_block_variables = {}
@@ -53,13 +53,6 @@ class Scheduler:
         program_block_variables[(program_block_var)] = var
 
         return program_block_variables
-
-    def assign_rooms_and_program_blocks(self):
-        get = 0
-        for room_var in self.room_variables.items():
-            for program_block_var in self.program_block_variables.items():
-                get = f"{room_var} = {program_block_var}"
-        print(get)
 
 if __name__ == "__main__":
     
@@ -295,4 +288,3 @@ if __name__ == "__main__":
 
     scheduler = Scheduler(rooms, program_blocks, teachers)
 
-    scheduler.assign_rooms_and_program_blocks()
