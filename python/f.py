@@ -10,30 +10,33 @@ class Scheduler:
         self.solver = cp_model.CpSolver()
 
         # Create variables for rooms and program blocks
-        self.room_variables = self.create_room_variables()
-        self.program_block_variables = self.create_program_block_variables()
+        self.room_variables = self.define_rooms_variable()
+        self.program_block_variables = self.define_program_blocks_variable()
+        self.teachers_variables = self.define_teachers_variable()
 
+        self.assignment = {}
 
-    def create_room_variables(self):
-        
-                
-        room_availability_vars = {}  # Dictionary to store the boolean variables
+    def define_rooms_variable(self):
+        room_variables = []
 
-        # Create NewBoolVar variables for each room's availability slot and set their values based on the sample data
-        for room in rooms:
+        for room in self.rooms:
             room_name = room['name']
             availability = room['availability']
             for day_info in availability:
                 day = day_info['day']
                 time = day_info['time']
                 for t in time:
-                    room_availability_vars[(room_name, day, t)] = self.model.NewBoolVar(f'{room_name}_{day}_{t}')
+                    room_variables.append({
+                        'room_name': room_name,
+                        'day': day,
+                        'time': t
+                    })
 
-        print(room_availability_vars)
+        return room_variables
 
+    def define_program_blocks_variable(self):
 
-    def create_program_block_variables(self):
-        program_block_variables = {}
+        program_block_variables = []
 
         for program_block in self.program_blocks:
             program = program_block['program']
@@ -42,17 +45,72 @@ class Scheduler:
             for year in years:
                 year_blocks = year['year'] + year['blocks']
                 courses = year['courses']
-
+                program_year_blocks = f"{program} {year_blocks}"
                 for course in courses:
                     course_code = course['code']
-                    course_description = course['description']
-                    course_unit = course['unit']
 
-        program_block_var = f"{program}, {year_blocks}, {course_code}, {course_description}, {course_unit}"
-        var = self.model.NewBoolVar(program_block_var)
-        program_block_variables[(program_block_var)] = var
+                    program_block_variables.append({
+                        'program' : program_year_blocks,
+                        'course code' : course_code
+                    })
 
         return program_block_variables
+    
+    def define_teachers_variable(self):
+        teachers_variables = []
+
+        for teachers in self.teachers:
+            teacher_name = teachers['name']
+            teacher_preferred_courses = teachers['preferredCourses']
+            for teacher_courses in teacher_preferred_courses:
+                course_code = teacher_courses['code']
+
+                teachers_variables.append({
+                    'name' : teacher_name,
+                    'course code' : course_code
+                })
+
+        return teachers_variables
+
+    def define_assignment(self):
+        
+
+        for program_blocks in self.program_block_variables:
+            program = program_blocks['program']
+            course_code = program_blocks['course code']
+
+            for rooms in self.room_variables:
+                room_name = rooms['room_name']
+                day = rooms['day']
+                time = rooms['time'] 
+
+                for teachers in self.teachers_variables:
+                    teacher_name = teachers['name']
+                    t_course_code = teachers['course code']
+
+                    if t_course_code == course_code:
+                        sched_var = f"{program}, {course_code}, {day}, {time}, {room_name}, {teacher_name} "
+                        var = self.model.NewBoolVar(sched_var)
+                        self.model.Add(var == 1)  
+                        self.assignment[( sched_var )] = var
+
+    def room_constraints(self):
+        for rooms in self.room_variables:
+            time = rooms['time']
+            for program_blocks in self.program_block_variables:
+                self.model.Add(sum(self.assignment.get(f"{program_blocks['program']}, {program_blocks['course code']}, {rooms['day']}, {time}, {rooms['room_name']}, {teachers['name']}", 0) for teachers in self.teachers_variables) == 1)
+
+    def solve(self):
+
+        status = self.solver.Solve(self.model)
+
+        if status == cp_model.OPTIMAL:
+            self.interpret_schedule()
+
+    def interpret_schedule(self):
+        for key, var in self.assignment.items():
+            if self.solver.Value(var) == 1:
+                print(f"{key}")
 
 if __name__ == "__main__":
     
@@ -107,6 +165,11 @@ if __name__ == "__main__":
                     'description': "Data Mining",
                     'units': "3" 
                 },
+                {
+                    'code': "CS 2201",
+                    'description': "Database Systems",
+                    'unit': "3",
+                },
                 # Add more courses
             ]
         },
@@ -127,6 +190,63 @@ if __name__ == "__main__":
                     'code': "IT 2207", 
                     'description': "Web Development", 
                     'units': 3
+                },
+                {
+                    'code': "CS 3105",
+                    'description': "Operating Systems",
+                    'unit': "3",
+                },
+                    # Add more subjects here
+            ]
+        },
+        {
+            'name': "teacher3",
+            'preferredCourses': [
+                {
+                    'code': "CS 3203",
+                    'description': "Software Engineering",
+                    'unit': "3",
+                },
+                {
+                    'code': "CS 4109",
+                    'description': "Computer Networks",
+                    'unit': "3",
+                },
+                {
+                    'code': "CS 4207",
+                    'description': "Artificial Intelligence",
+                    'unit': "3",
+                },
+                {
+                    'code': "CS 5102",
+                    'description': "Web Development",
+                    'unit': "3",
+                },
+                    # Add more subjects here
+            ]
+        },
+        {
+            'name': "teacher4",
+            'preferredCourses': [
+                {
+                    'code': "IT 1203",
+                    'description': "Database Management Systems",
+                    'unit': "3",
+                },
+                {
+                    'code': "IT 3109",
+                    'description': "Software Engineering",
+                    'unit': "3",
+                },
+                {
+                    'code': "IT 3201",
+                    'description': "Computer Networks",
+                    'unit': "3",
+                },
+                {
+                    'code': "IT 4204",
+                    'description': "Cloud Computing",
+                    'unit': "3",
                 },
                     # Add more subjects here
             ]
@@ -287,4 +407,6 @@ if __name__ == "__main__":
     ]
 
     scheduler = Scheduler(rooms, program_blocks, teachers)
+    scheduler.define_assignment()
+    scheduler.solve()
 
