@@ -9,12 +9,13 @@ class Scheduler:
         self.model = cp_model.CpModel()
         self.solver = cp_model.CpSolver()
 
-        # Create variables for rooms and program blocks
+        # Create variables for rooms, program blocks, and teachers
         self.room_variables = self.define_rooms_variable()
         self.program_block_variables = self.define_program_blocks_variable()
         self.teachers_variables = self.define_teachers_variable()
 
-        self.assignment = {}
+        # Define schedule as a dictionary to hold variables
+        self.schedule = self.define_assignment()
 
     def define_rooms_variable(self):
         room_variables = []
@@ -24,18 +25,13 @@ class Scheduler:
             availability = room['availability']
             for day_info in availability:
                 day = day_info['day']
-                time = day_info['time']
-                for t in time:
-                    room_variables.append({
-                        'room_name': room_name,
-                        'day': day,
-                        'time': t
-                    })
+                times = day_info['time']
+                for time in times:
+                    room_variables.append((room_name, day, time))
 
         return room_variables
 
     def define_program_blocks_variable(self):
-
         program_block_variables = []
 
         for program_block in self.program_blocks:
@@ -49,68 +45,72 @@ class Scheduler:
                 for course in courses:
                     course_code = course['code']
 
-                    program_block_variables.append({
-                        'program' : program_year_blocks,
-                        'course code' : course_code
-                    })
+                    program_block_variables.append((program_year_blocks, course_code))
 
         return program_block_variables
     
     def define_teachers_variable(self):
         teachers_variables = []
 
-        for teachers in self.teachers:
-            teacher_name = teachers['name']
-            teacher_preferred_courses = teachers['preferredCourses']
-            for teacher_courses in teacher_preferred_courses:
-                course_code = teacher_courses['code']
+        for teacher in self.teachers:
+            teacher_name = teacher['name']
+            teacher_preferred_courses = teacher['preferredCourses']
+            for teacher_course in teacher_preferred_courses:
+                course_code = teacher_course['code']
 
-                teachers_variables.append({
-                    'name' : teacher_name,
-                    'course code' : course_code
-                })
+                teachers_variables.append((teacher_name, course_code))
 
         return teachers_variables
 
     def define_assignment(self):
-        
+        schedule = {}
 
-        for program_blocks in self.program_block_variables:
-            program = program_blocks['program']
-            course_code = program_blocks['course code']
+        for program_block in self.program_block_variables:
+            program = program_block[0]
+            course_code = program_block[1]
+            # Unique value of course_code
+            course_var = self.model.NewBoolVar(f"course_{course_code}")
+            schedule[('course', course_code)] = course_var
 
-            for rooms in self.room_variables:
-                room_name = rooms['room_name']
-                day = rooms['day']
-                time = rooms['time'] 
+        for room in self.room_variables:
+            room_name = room[0]
+            day = room[1]
+            time = room[2]
+            # Unique value of room_name
+            room_var = self.model.NewBoolVar(f"room_{room_name}")
+            schedule[('room', room_name)] = room_var
 
-                for teachers in self.teachers_variables:
-                    teacher_name = teachers['name']
-                    t_course_code = teachers['course code']
+        for teacher in self.teachers_variables:
+            teacher_name = teacher[0]
+            teacher_course = teacher[1]
+                # Unique value of teacher_name
+            teacher_var = self.model.NewBoolVar(f"teacher_{teacher_name}")
+            schedule[('teacher', teacher_name)] = teacher_var
 
-                    if t_course_code == course_code:
-                        sched_var = f"{program}, {course_code}, {day}, {time}, {room_name}, {teacher_name} "
-                        var = self.model.NewBoolVar(sched_var)
-                        self.model.Add(var == 1)  
-                        self.assignment[( sched_var )] = var
+        if course_code == teacher_course:
+            sched_var = (course_code, day, time, room_name, teacher_name)
+            var = self.model.NewBoolVar(str(sched_var))
+            schedule[sched_var] = var
 
-    def room_constraints(self):
-        for rooms in self.room_variables:
-            time = rooms['time']
-            for program_blocks in self.program_block_variables:
-                self.model.Add(sum(self.assignment.get(f"{program_blocks['program']}, {program_blocks['course code']}, {rooms['day']}, {time}, {rooms['room_name']}, {teachers['name']}", 0) for teachers in self.teachers_variables) == 1)
+        # Add constraint to ensure uniqueness for each variable
+        self.model.AddImplication(var, course_var.Not())
+        self.model.AddImplication(var, room_var.Not())
+        self.model.AddImplication(var, teacher_var.Not())
+
+        return schedule
+
 
     def solve(self):
-
         status = self.solver.Solve(self.model)
 
-        if status == cp_model.OPTIMAL:
-            self.interpret_schedule()
+        print(f"Solver Status: {status}")
+
+        self.interpret_schedule()
 
     def interpret_schedule(self):
-        for key, var in self.assignment.items():
-            if self.solver.Value(var) == 1:
-                print(f"{key}")
+        for key, var in self.schedule.items():
+            print(f"{key}, {self.solver.Value(var)}")
+
 
 if __name__ == "__main__":
     
@@ -407,6 +407,6 @@ if __name__ == "__main__":
     ]
 
     scheduler = Scheduler(rooms, program_blocks, teachers)
-    scheduler.define_assignment()
     scheduler.solve()
+
 

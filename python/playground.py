@@ -1,44 +1,55 @@
 from ortools.sat.python import cp_model
 
-def solve_task_assignment():
-    # Create a CSP model
+class ThreeStringVarSolutionPrinter(cp_model.CpSolverSolutionCallback):
+    """Print intermediate solutions for a CSP problem with three string variables."""
+
+    def __init__(self, x, y, z, string_mapping):
+        cp_model.CpSolverSolutionCallback.__init__(self)
+        self.__x = x
+        self.__y = y
+        self.__z = z
+        self.__string_mapping = string_mapping
+        self.__solution_count = 0
+
+    def on_solution_callback(self):
+        self.__solution_count += 1
+        print(f'Solution {self.__solution_count}:')
+        print(f'X = {self.__string_mapping[self.Value(self.__x)]}')
+        print(f'Y = {self.__string_mapping[self.Value(self.__y)]}')
+        print(f'Z = {self.__string_mapping[self.Value(self.__z)]}')
+        print()
+
+    def solution_count(self):
+        return self.__solution_count
+
+def solve_three_string_variables_csp():
+    # Create a CP model
     model = cp_model.CpModel()
 
-    # Define variables
-    num_tasks = 3
-    num_workers = 3
-    tasks = range(num_tasks)
-    workers = range(num_workers)
+    # Array of string values for each variable
+    string_values = ['Apple', 'Orange', 'Banana']
 
-    # Variable representing the assignment of tasks to workers
-    assignment = {}
-    for task in tasks:
-        for worker in workers:
-            assignment[(task, worker)] = model.NewBoolVar(f'Task_{task}_Worker_{worker}')
+    # Create variables
+    x = model.NewIntVar(0, len(string_values) - 1, 'X')
+    y = model.NewIntVar(0, len(string_values) - 1, 'Y')
+    z = model.NewIntVar(0, len(string_values) - 1, 'Z')
 
-    # Each task is assigned to exactly one worker
-    for task in tasks:
-        model.Add(sum(assignment[(task, worker)] for worker in workers) == 1)
+    # Add constraints (example constraints)
+    model.Add(x != y)  # X and Y cannot have the same value
+    model.Add(y != z)  # Y and Z cannot have the same value
+    model.Add(z != x)  # Z and X cannot have the same value
 
-    # Each worker is assigned to exactly one task
-    for worker in workers:
-        model.Add(sum(assignment[(task, worker)] for task in tasks) == 1)
-
-    # Define the solver
+    # Create a solver
     solver = cp_model.CpSolver()
 
-    # Solve the model
-    status = solver.Solve(model)
+    # Create a solution printer with the string mapping
+    solution_printer = ThreeStringVarSolutionPrinter(x, y, z, string_values)
 
-    # Print the solution
-    if status == cp_model.OPTIMAL:
-        print('Optimal assignment:')
-        for task in tasks:
-            for worker in workers:
-                if solver.Value(assignment[(task, worker)]) == 1:
-                    print(f'Task {task} is assigned to Worker {worker}')
-    else:
-        print('No optimal assignment found.')
+    # Solve the problem and print all solutions
+    solver.SearchForAllSolutions(model, solution_printer)
 
-# Call the function to solve the task assignment problem
-solve_task_assignment()
+    if solution_printer.solution_count() == 0:
+        print('No solutions found.')
+
+# Solve and print all possible solutions for the three-string-variable CSP
+solve_three_string_variables_csp()
