@@ -1,63 +1,363 @@
 from ortools.sat.python import cp_model
 
-class ThreeVarStringSolutionPrinter(cp_model.CpSolverSolutionCallback):
-    """Print intermediate solutions for a CSP problem with three string variables."""
+class Scheduler:
+    def __init__(self, rooms, program_blocks, teachers):
+        self.rooms = rooms
+        self.program_blocks = program_blocks
+        self.teachers = teachers
 
-    def __init__(self, people, fruits, places, preferences):
-        cp_model.CpSolverSolutionCallback.__init__(self)
-        self.__people = people
-        self.__fruits = fruits
-        self.__places = places
-        self.__preferences = preferences
-        self.__solution_count = 0
+        self.model = cp_model.CpModel()
+        self.solver = cp_model.CpSolver()
 
-    def on_solution_callback(self):
-        self.__solution_count += 1
-        print(f'Solution {self.__solution_count}:')
-        for person in self.__people:
-            for fruit in self.__fruits:
-                for place in self.__places:
-                    if self.Value(self.__preferences[(person, fruit, place)]) == 1:
-                        print(f'{person} prefers {fruit} and likes to be at {place}')
-        print()
+        self.room_variables = self.define_rooms_variable()
+        self.program_block_variables = self.define_program_blocks_variable()
+        self.teachers_variables = self.define_teachers_variable()
 
-    def solution_count(self):
-        return self.__solution_count
+        self.assigning()
 
-def solve_preferences():
-    # Create a CP model
-    model = cp_model.CpModel()
+    def define_rooms_variable(self):
+        room_variables = {}
+        for room in self.rooms:
+            room_name = room['name']
+            availability = room['availability']
+            for day_info in availability:
+                day = day_info['day']
+                times = day_info['time']
+                for time in times:
+                    room_variables[(room_name, day, time)] = self.model.NewBoolVar(f"{room_name}, {day}, {time}")
+        return room_variables
 
-    # Define people, fruits, and places
-    people = ['John', 'Bryan', 'Mark']
-    fruits = ['Apple', 'Orange', 'Banana']
-    places = ['park', 'house', 'court']
+    def define_program_blocks_variable(self):
+        program_block_variables = {}
+        for program_block in self.program_blocks:
+            program = program_block['program']
+            years = program_block['year']
+            for year in years:
+                year_blocks = year['year'] + year['blocks']
+                courses = year['courses']
+                for course in courses:
+                    course_code = course['code']
+                    program_block_variables[course_code] = self.model.NewBoolVar(f"{course_code}")
+        return program_block_variables
+    
+    def define_teachers_variable(self):
+        teachers_variables = {}
+        for teacher in self.teachers:
+            teacher_name = teacher['name']
+            teacher_preferred_courses = teacher['preferredCourses']
+            for teacher_course in teacher_preferred_courses:
+                course_code = teacher_course['code']
+                teachers_variables[(teacher_name, course_code)] = self.model.NewBoolVar(f"{teacher_name}, {course_code}")
+        return teachers_variables
 
-    # Create variables with bounds corresponding to the indices
-    preferences = {}
-    for person in people:
-        for fruit in fruits:
-            for place in places:
-                preferences[(person, fruit, place)] = model.NewBoolVar(f'{person}_{fruit}_{place}')
+    def assigning(self):
+        assigning = {}
 
-    # Add constraints
-    for person in people:
-        model.Add(sum(preferences[(person, fruit, place)] for fruit in fruits for place in places) == 1)
+        rooms = {i: key for i, key in enumerate(self.room_variables.keys())}
+        program_blocks = {i: key for i, key in enumerate(self.program_block_variables.keys())}
+        teachers = {i: key for i, key in enumerate(self.teachers_variables.keys())}
 
-    # Example constraint: Mark specifically prefers Banana and likes to be at the park
-    model.Add(preferences[('Mark', 'Banana', 'park')] == 1)
+        for room_index, room_key in rooms.items():
+            for program_block_index, program_block_key in program_blocks.items():
+                for teacher_index, teacher_key in teachers.items():
+                        assign = (program_block_index, room_index, teacher_index)
+                        var = self.model.NewBoolVar(str(assign))
+                        assigning[assign] = var
 
-    # Create a solver
-    solver = cp_model.CpSolver()
+        print(assigning)
 
-    # Create a solution printer
-    solution_printer = ThreeVarStringSolutionPrinter(people, fruits, places, preferences)
+if __name__ == "__main__":
+    
+    rooms = [
+        {
+            'name': "room1",
+            'availability': [
+                {
+                    'day': "Monday",
+                    'time': [ '07:00', '07:30', '08:00', '08:30' ],
+                },
+                {
+                    'day': "Tuesday",
+                    'time': [ '07:00', '07:30', '08:00', '08:30' ],
+                }
+                # Add more availability
+            ]
+        },
+        {
+            'name': "room2",
+            'availability': [
+                {
+                    'day': "Monday",
+                    'time': [ '07:00', '07:30', '08:00', '08:30' ],
+                },
+                {
+                    'day': "Tuesday",
+                    'time': [ '07:00', '07:30', '08:00', '08:30' ],
+                }
+                # Add more availability
+            ]
+        }
+        # Add more rooms
+    ]
 
-    # Solve the problem and print all solutions
-    solver.SearchForAllSolutions(model, solution_printer)
+    teachers = [
+        {
+            'name': "teacher1",
+            'preferredCourses': [
+                {
+                    'code': "IT 4102",
+                    'description': "Mobile App Development",
+                    'units': "3" 
+                },
+                {
+                    'code': "IT 1101",
+                    'description': "Information Technology Fundamentals",
+                    'units': "3" 
+                },
+                {
+                    'code': "CS 5204",
+                    'description': "Data Mining",
+                    'units': "3" 
+                },
+                {
+                    'code': "CS 2201",
+                    'description': "Database Systems",
+                    'unit': "3",
+                },
+                # Add more courses
+            ]
+        },
+        {
+            'name': "teacher2",
+            'preferredCourses': [
+                {
+                    'code': "CS 2107", 
+                    'description': "Data Structures and Algorithm", 
+                    'units': 3
+                },
+                {
+                    'code': "IT 2105", 
+                    'description': "System Analysis and Design", 
+                    'units': 3
+                },
+                {
+                    'code': "IT 2207", 
+                    'description': "Web Development", 
+                    'units': 3
+                },
+                {
+                    'code': "CS 3105",
+                    'description': "Operating Systems",
+                    'unit': "3",
+                },
+                    # Add more subjects here
+            ]
+        },
+        {
+            'name': "teacher3",
+            'preferredCourses': [
+                {
+                    'code': "CS 3203",
+                    'description': "Software Engineering",
+                    'unit': "3",
+                },
+                {
+                    'code': "CS 4109",
+                    'description': "Computer Networks",
+                    'unit': "3",
+                },
+                {
+                    'code': "CS 4207",
+                    'description': "Artificial Intelligence",
+                    'unit': "3",
+                },
+                {
+                    'code': "CS 5102",
+                    'description': "Web Development",
+                    'unit': "3",
+                },
+                    # Add more subjects here
+            ]
+        },
+        {
+            'name': "teacher4",
+            'preferredCourses': [
+                {
+                    'code': "IT 1203",
+                    'description': "Database Management Systems",
+                    'unit': "3",
+                },
+                {
+                    'code': "IT 3109",
+                    'description': "Software Engineering",
+                    'unit': "3",
+                },
+                {
+                    'code': "IT 3201",
+                    'description': "Computer Networks",
+                    'unit': "3",
+                },
+                {
+                    'code': "IT 4204",
+                    'description': "Cloud Computing",
+                    'unit': "3",
+                },
+                    # Add more subjects here
+            ]
+        }
+        # Add more teachers
+    ]
 
-    if solution_printer.solution_count() == 0:
-        print('No solutions found.')
+    program_blocks = [
+        {
+            'program': "BSCS",
+            'year': [
+                {
+                    'year': "1",
+                    'blocks': "A",
+                    'courses': [
+                        {
+                            'code': "CS 2107",
+                            'description': "Data Structures and Algorithm",
+                            'unit': "3",
+                        },
+                        {
+                            'code': "CS 2201",
+                            'description': "Database Systems",
+                            'unit': "3",
+                        },
+                        # Add more courses
+                    ]
+                },
+                {
+                    'year': "2",
+                    'blocks': "A",
+                    'courses': [
+                        {
+                            'code': "CS 3105",
+                            'description': "Operating Systems",
+                            'unit': "3",
+                        },
+                        {
+                            'code': "CS 3203",
+                            'description': "Software Engineering",
+                            'unit': "3",
+                        },
+                        # Add more courses
+                    ]
+                },
+                {
+                    'year': "3",
+                    'blocks': "A",
+                    'courses': [
+                        {
+                            'code': "CS 4109",
+                            'description': "Computer Networks",
+                            'unit': "3",
+                        },
+                        {
+                            'code': "CS 4207",
+                            'description': "Artificial Intelligence",
+                            'unit': "3",
+                        },
+                        # Add more courses
+                    ]
+                },
+                {
+                    'year': "4",
+                    'blocks': "A",
+                    'courses': [
+                        {
+                            'code': "CS 5102",
+                            'description': "Web Development",
+                            'unit': "3",
+                        },
+                        {
+                            'code': "CS 5204",
+                            'description': "Data Mining",
+                            'unit': "3",
+                        },
+                        # Add more courses
+                    ]
+                }
+                # Add more year
+            ]
+        },
+        {
+            'program': "BSIT",
+            'year': [
+                {
+                    'year': "1",
+                    'blocks': "A",
+                    'courses': [
+                        {
+                            'code': "IT 1101",
+                            'description': "Information Technology Fundamentals",
+                            'unit': "3",
+                        },
+                        {
+                            'code': "IT 1203",
+                            'description': "Database Management Systems",
+                            'unit': "3",
+                        },
+                        # Add more courses
+                    ]
+                },
+                {
+                    'year': "2",
+                    'blocks': "A",
+                    'courses': [
+                        {
+                            'code': "IT 2105",
+                            'description': "System Analysis and Design",
+                            'unit': "3",
+                        },
+                        {
+                            'code': "IT 2207",
+                            'description': "Web Development",
+                            'unit': "3",
+                        },
+                        # Add more courses
+                    ]
+                },
+                {
+                    'year': "3",
+                    'blocks': "A",
+                    'courses': [
+                        {
+                            'code': "IT 3109",
+                            'description': "Software Engineering",
+                            'unit': "3",
+                        },
+                        {
+                            'code': "IT 3201",
+                            'description': "Computer Networks",
+                            'unit': "3",
+                        },
+                        # Add more courses
+                    ]
+                },
+                {
+                    'year': "4",
+                    'blocks': "A",
+                    'courses': [
+                        {
+                            'code': "IT 4102",
+                            'description': "Mobile App Development",
+                            'unit': "3",
+                        },
+                        {
+                            'code': "IT 4204",
+                            'description': "Cloud Computing",
+                            'unit': "3",
+                        },
+                        # Add more courses
+                    ]
+                },
+                # Add more year
+            ]
+        }
+        # Add more programs
+    ]
 
-# Solve and print all possible solutions for the preferences problem
-solve_preferences()
+    scheduler = Scheduler(rooms, program_blocks, teachers)
