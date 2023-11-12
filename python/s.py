@@ -15,6 +15,8 @@ class Scheduler:
 
         self.assigning()
 
+        self.solve()
+
     def define_rooms_variable(self):
         room_variables = {}
         for room in self.rooms:
@@ -49,22 +51,53 @@ class Scheduler:
                 course_code = teacher_course['code']
                 teachers_variables[(teacher_name, course_code)] = self.model.NewBoolVar(f"{teacher_name}, {course_code}")
         return teachers_variables
-
+    
     def assigning(self):
-        assigning = {}
+        assigning = []
 
         rooms = {i: key for i, key in enumerate(self.room_variables.keys())}
         program_blocks = {i: key for i, key in enumerate(self.program_block_variables.keys())}
         teachers = {i: key for i, key in enumerate(self.teachers_variables.keys())}
 
+        used_program_blocks = set()
+        used_rooms = set()
+        used_teachers = set()
+
         for room_index, room_key in rooms.items():
             for program_block_index, program_block_key in program_blocks.items():
                 for teacher_index, teacher_key in teachers.items():
+                    if (
+                        program_block_key == teacher_key[1]
+                        and program_block_index not in used_program_blocks
+                        and room_index not in used_rooms
+                        and teacher_index not in used_teachers
+                    ):
                         assign = (program_block_index, room_index, teacher_index)
-                        var = self.model.NewBoolVar(str(assign))
-                        assigning[assign] = var
+                        assigning.append(assign)
 
-        print(assigning)
+                        # Mark the used indices
+                        used_program_blocks.add(program_block_index)
+                        used_rooms.add(room_index)
+                        used_teachers.add(teacher_index)
+
+        return assigning
+    
+    def solve(self):
+        status = self.solver.Solve(self.model)
+        
+        if status == cp_model.OPTIMAL:
+            print("Feasible solution found. Assignments:")
+            for assignment in self.assigning():
+                program_block_index, room_index, teacher_index = assignment
+                room = list(self.room_variables.keys())[room_index]
+                program_block = list(self.program_block_variables.keys())[program_block_index]
+                teacher = list(self.teachers_variables.keys())[teacher_index]
+                print(f"({program_block_index}, {room_index}, {teacher_index}) "
+                    f"Program Block {program_block} assigned to Room {room} with Teacher {teacher}")
+        else:
+            print('No feasible solution found.')
+
+
 
 if __name__ == "__main__":
     
