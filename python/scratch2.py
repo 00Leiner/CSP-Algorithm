@@ -1,80 +1,80 @@
 from ortools.sat.python import cp_model
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
 
 class Scheduler:
-    def __init__(self, rooms, teachers, program_blocks):
+    def __init__(self, rooms, program_blocks, teachers):
         self.rooms = rooms
-        self.teachers = teachers
         self.program_blocks = program_blocks
+        self.teachers = teachers
 
         self.model = cp_model.CpModel()
         self.solver = cp_model.CpSolver()
 
-        self.course_assignments = self.define_course_assignments()
-        self.define_constraints()
+        self.room_variables = self.define_rooms_variable()
+        self.program_block_variables = self.define_program_blocks_variable()
+        self.teachers_variables = self.define_teachers_variable()
 
-    def define_course_assignments(self):
-        course_assignments = {}
+        assigning = self.assigning()
+
+    def define_rooms_variable(self):
+        room_variables = {}
+        for room in self.rooms:
+            room_name = room['name']
+            availability = room['availability']
+            for day_info in availability:
+                day = day_info['day']
+                times = day_info['time']
+                for time in times:
+                    room_variables[(room_name, day, time)] = self.model.NewBoolVar(f"{room_name}, {day}, {time}")
+        return room_variables
+
+    def define_program_blocks_variable(self):
+        program_block_variables = {}
         for program_block in self.program_blocks:
             program = program_block['program']
             years = program_block['year']
-
             for year in years:
-                year_blocks = year['year']
-                year_blocks += year['blocks']
+                year_blocks = year['year'] + year['blocks']
                 courses = year['courses']
-
                 for course in courses:
                     course_code = course['code']
-                    course_description = course['description']
-                    course_unit = course['unit']
+                    program_block_variables[course_code] = self.model.NewBoolVar(f"{course_code}")
+        return program_block_variables
+    
+    def define_teachers_variable(self):
+        teachers_variables = {}
+        for teacher in self.teachers:
+            teacher_name = teacher['name']
+            teacher_preferred_courses = teacher['preferredCourses']
+            for teacher_course in teacher_preferred_courses:
+                course_code = teacher_course['code']
+                teachers_variables[(teacher_name, course_code)] = self.model.NewBoolVar(f"{teacher_name}, {course_code}")
+        return teachers_variables
+    
+    def assigning(self):
+        assigning = {}
+
+        rooms = list(self.room_variables.keys())
+        program_blocks = list(self.program_block_variables.keys())
+        teachers = list(self.teachers_variables.keys())
+
+        for room_index, _ in enumerate(rooms):
+            for program_block_index, _ in enumerate(program_blocks):
+                for teacher_index, _ in enumerate(teachers):
+                    assign = (program_block_index, room_index, teacher_index)
+                    var = self.model.NewBoolVar(str(assign))
+                    assigning[assign] = var
                     
-                    for room in self.rooms:
-                        room_name = room['name']
-                        for day in room['availability']:
-                            day_name = day['day']
-
-                            for time_slot in day['time']:
-
-
-                                var_name = f"{course_code}, {course_description}, {course_unit}, {day_name}, {time_slot}, {room_name}"
-                                course_assignments[var_name] = self.model.NewBoolVar(var_name)
-                                
-        return course_assignments
-
-    def define_constraints(self):
-        for program_block in self.program_blocks:
-            years = program_block['year']
-
-            for year in years:
-                courses = year['courses']
-
-                for course in courses:
-                    course_code = course['code']
-                    teacher = self.get_teacher_for_course(course_code)
-                    # Add constraints related to teacher availability, if needed.
                     
-        # Add additional constraints as per your requirements, such as room availability, no overlap, etc.
+        return assigning
 
-    def get_teacher_for_course(self, course_code):
-        # Implement a method to find and return the teacher for a given course code.
-        # You can use the 'teachers' data to look up the teacher based on their preferred courses.
-        # You may also want to track teacher assignments and ensure that a teacher isn't assigned to conflicting courses.
-        pass
 
-    def solve(self):
-        status = self.solver.Solve(self.model)
-        if status == cp_model.OPTIMAL:
-            self.print_solution()
-        else:
-            print("No feasible solution found.")
 
-    def print_solution(self):
-        for var_name, var in self.course_assignments.items():
-            if self.solver.Value(var):
-                print(f"Assigned: {var_name}")
 
 if __name__ == "__main__":
-
+    
     rooms = [
         {
             'name': "room1",
@@ -126,6 +126,11 @@ if __name__ == "__main__":
                     'description': "Data Mining",
                     'units': "3" 
                 },
+                {
+                    'code': "CS 2201",
+                    'description': "Database Systems",
+                    'unit': "3",
+                },
                 # Add more courses
             ]
         },
@@ -146,6 +151,63 @@ if __name__ == "__main__":
                     'code': "IT 2207", 
                     'description': "Web Development", 
                     'units': 3
+                },
+                {
+                    'code': "CS 3105",
+                    'description': "Operating Systems",
+                    'unit': "3",
+                },
+                    # Add more subjects here
+            ]
+        },
+        {
+            'name': "teacher3",
+            'preferredCourses': [
+                {
+                    'code': "CS 3203",
+                    'description': "Software Engineering",
+                    'unit': "3",
+                },
+                {
+                    'code': "CS 4109",
+                    'description': "Computer Networks",
+                    'unit': "3",
+                },
+                {
+                    'code': "CS 4207",
+                    'description': "Artificial Intelligence",
+                    'unit': "3",
+                },
+                {
+                    'code': "CS 5102",
+                    'description': "Web Development",
+                    'unit': "3",
+                },
+                    # Add more subjects here
+            ]
+        },
+        {
+            'name': "teacher4",
+            'preferredCourses': [
+                {
+                    'code': "IT 1203",
+                    'description': "Database Management Systems",
+                    'unit': "3",
+                },
+                {
+                    'code': "IT 3109",
+                    'description': "Software Engineering",
+                    'unit': "3",
+                },
+                {
+                    'code': "IT 3201",
+                    'description': "Computer Networks",
+                    'unit': "3",
+                },
+                {
+                    'code': "IT 4204",
+                    'description': "Cloud Computing",
+                    'unit': "3",
                 },
                     # Add more subjects here
             ]
@@ -305,5 +367,6 @@ if __name__ == "__main__":
         # Add more programs
     ]
 
-    scheduler = Scheduler(rooms, teachers, program_blocks)
-    scheduler.solve()
+    scheduler = Scheduler(rooms, program_blocks, teachers)
+
+  

@@ -82,6 +82,8 @@ class Scheduler:
 
         return assigning
     
+
+
     def solve(self):
         status = self.solver.Solve(self.model)
         
@@ -96,7 +98,6 @@ class Scheduler:
                     f"Program Block {program_block} assigned to Room {room} with Teacher {teacher}")
         else:
             print('No feasible solution found.')
-
 
 
 if __name__ == "__main__":
@@ -394,3 +395,5 @@ if __name__ == "__main__":
     ]
 
     scheduler = Scheduler(rooms, program_blocks, teachers)
+
+    
